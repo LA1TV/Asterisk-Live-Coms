@@ -15,7 +15,7 @@ class ReturnObj extends SocketOutput {
 	public ReturnObj(int code, String msg, Object payload) {
 		this.code = code;
 		this.msg = msg;
-		this.payload = payload == null ? new JSONObject() : payload;
+		this.payload = payload;
 	}
 	
 	public int getCode() {
@@ -38,7 +38,7 @@ class ReturnObj extends SocketOutput {
 		Hashtable<String,Object> data = new Hashtable<String,Object>();
 		data.put("code", getCode());
 		data.put("msg", getMsg() == null ? false : getMsg());
-		data.put("payload", getPayload());
+		data.put("payload", getPayload() == null ? false : getPayload());
 		return data;
 	}
 	

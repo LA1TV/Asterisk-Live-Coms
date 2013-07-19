@@ -9,6 +9,9 @@ import java.util.Hashtable;
 
 import tjenkinson.asteriskLiveComs.program.events.ChannelAddedEvent;
 import tjenkinson.asteriskLiveComs.program.events.ChannelRemovedEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelToHoldingEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelVerifiedEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelsToRoomEvent;
 import tjenkinson.asteriskLiveComs.program.events.EventListener;
 import tjenkinson.asteriskLiveComs.program.events.LiveComsEvent;
 
@@ -69,6 +72,24 @@ class ClientSocketConnectionManager implements Runnable, EventListener {
 			Hashtable<String,Object> payload = new Hashtable<String,Object>();
 			payload.put("channelId", ((ChannelRemovedEvent) e).getChannelId());
 			sendOutput(new EventObj("channelRemoved", payload));
+		}
+		else if (e.getClass().getSimpleName().equals("ChannelsToRoomEvent")) {
+			Hashtable<String,Object> payload = new Hashtable<String,Object>();
+			payload.put("channelIds", ((ChannelsToRoomEvent) e).getChannelIds());
+			sendOutput(new EventObj("channelsToRoom", payload));
+		}
+		else if (e.getClass().getSimpleName().equals("ChannelToHoldingEvent")) {
+			Hashtable<String,Object> payload = new Hashtable<String,Object>();
+			payload.put("channelId", ((ChannelToHoldingEvent) e).getChannelId());
+			sendOutput(new EventObj("channelToHoldingEvent", payload));
+		}
+		else if (e.getClass().getSimpleName().equals("ChannelVerifiedEvent")) {
+			Hashtable<String,Object> payload = new Hashtable<String,Object>();
+			payload.put("channelId", ((ChannelVerifiedEvent) e).getChannelId());
+			sendOutput(new EventObj("channelVerified", payload));
+		}
+		else if (e.getClass().getSimpleName().equals("ServerResettingEvent")) {
+			sendOutput(new EventObj("resetting", null));
 		}
 	}
 }

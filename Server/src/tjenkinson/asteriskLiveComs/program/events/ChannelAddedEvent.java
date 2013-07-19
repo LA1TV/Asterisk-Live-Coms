@@ -4,7 +4,7 @@ import java.util.Hashtable;
 
 import tjenkinson.asteriskLiveComs.program.MyAsteriskChannel;
  
-public class ChannelAddedEvent extends AbstractChannelEvent {
+public class ChannelAddedEvent extends LiveComsEvent {
 	
 	private MyAsteriskChannel channel;
 	public ChannelAddedEvent(MyAsteriskChannel channel) {

@@ -1,5 +1,14 @@
 package tjenkinson.asteriskLiveComs.program.events;
 
-abstract class AbstractChannelEvent extends LiveComsEvent {
+public abstract class AbstractChannelEvent  extends LiveComsEvent {
 	
+	private int id;
+	
+	public AbstractChannelEvent(int id) {
+		this.id = id;
+	}
+	
+	public int getChannelId() {
+		return id;
+	}
 }

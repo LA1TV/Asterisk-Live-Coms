@@ -119,6 +119,10 @@ class IncomingCommandHandler implements Runnable {
 							returnObj = new ReturnObj(103, "One or more of the channel id's haven't been verified yet.", null);
 						}
 					}
+					else if (inputLineJSON.getString("action").equals("reset")) {
+						clientSocketManager.getServerSocketManager().getMainProgramObj().reset();
+						returnObj = new ReturnObj(0, "The server is being reset.", null);
+					}
 				}
 				
 				if (returnObj == null) {

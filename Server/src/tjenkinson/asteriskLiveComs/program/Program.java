@@ -24,8 +24,12 @@ import org.asteriskjava.util.DaemonThreadFactory;
 
 import tjenkinson.asteriskLiveComs.program.events.ChannelAddedEvent;
 import tjenkinson.asteriskLiveComs.program.events.ChannelRemovedEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelToHoldingEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelVerifiedEvent;
+import tjenkinson.asteriskLiveComs.program.events.ChannelsToRoomEvent;
 import tjenkinson.asteriskLiveComs.program.events.EventListener;
 import tjenkinson.asteriskLiveComs.program.events.LiveComsEvent;
+import tjenkinson.asteriskLiveComs.program.events.ServerResettingEvent;
 import tjenkinson.asteriskLiveComs.program.exceptions.ChannelNotVerifiedException;
 import tjenkinson.asteriskLiveComs.program.exceptions.InvalidChannelException;
 import tjenkinson.asteriskLiveComs.program.exceptions.MissingKeyException;
@@ -47,8 +51,10 @@ public class Program {
 	private final ExecutorService eventsDispatcherExecutor;
 	private Object handleHangupLock = new Object();
 	private Object handleConnectionLock = new Object();
+	private Object asteriskConnectionLock = new Object();
 	private HandleAsteriskServerEvents asteriskServerEventsHandler;
 	private HandleManagerEvents managerEventsHandler;
+	private boolean hasLoaded = false;
 	
 	public Program(String ip, int port, String user, String password)
 	{
@@ -62,9 +68,12 @@ public class Program {
 		
 		eventsDispatcherExecutor = Executors.newSingleThreadExecutor(new DaemonThreadFactory());
 		ManagerConnectionFactory factory = new ManagerConnectionFactory(asteriskServerIP, asteriskServerPort, asteriskServerUser, asteriskServerSecret);
+		log("Starting asterisk manager connection.");
 		managerConnection = factory.createManagerConnection();
+		log("Started asterisk manager connection.");
 		asteriskServer = new DefaultAsteriskServer(managerConnection);
 		reset();
+		hasLoaded = true;
 		log("All systems running!");
 	}
 	
@@ -72,11 +81,16 @@ public class Program {
 		System.out.println(msg);
 	}
 	
-	private void reset()
+	public void reset()
 	{
 		log("Initialising.");
-		asteriskServer.removeAsteriskServerListener(asteriskServerEventsHandler);
-		managerConnection.removeEventListener(managerEventsHandler);
+		if (hasLoaded) {
+			dispatchEvent(new ServerResettingEvent());
+		}
+		synchronized(asteriskConnectionLock) {
+			asteriskServer.removeAsteriskServerListener(asteriskServerEventsHandler);
+			managerConnection.removeEventListener(managerEventsHandler);
+		}
 		if (channels == null) {
 			channels = new Hashtable<Integer,MyAsteriskChannel>();
 		}
@@ -104,13 +118,15 @@ public class Program {
 		catch (ManagerCommunicationException e) {
 			log("Can't find any channels because not connected to asterisk server.");
 		}
-		try {
-			asteriskServer.addAsteriskServerListener(asteriskServerEventsHandler);
+		synchronized(asteriskConnectionLock) {
+			try {
+				asteriskServer.addAsteriskServerListener(asteriskServerEventsHandler);
+			}
+			catch (ManagerCommunicationException e) {
+				log("Can't add listener because not connected to asterisk server.");
+			}
+			managerConnection.addEventListener(managerEventsHandler);
 		}
-		catch (ManagerCommunicationException e) {
-			log("Can't add listener because not connected to asterisk server.");
-		}
-		managerConnection.addEventListener(managerEventsHandler);
 	}
 	
 	private MyAsteriskChannel registerChannel(AsteriskChannel asteriskChannel) {
@@ -165,6 +181,7 @@ public class Program {
 				channel.setPlayHoldMusic(enableHoldingMusic);
 				channel.getChannel().setVariable("EnableHoldingMusic", enableHoldingMusic ? "1":"0");
 				sendToDPFn(channel, "GrantAccess", 1);
+				dispatchEvent(new ChannelVerifiedEvent(channel.getId()));
 				return true;
 			}
 		}
@@ -198,6 +215,7 @@ public class Program {
 		}
 		
 		int roomNo = -1;
+		ArrayList<Integer> ids = new ArrayList<Integer>();
 		synchronized(channels) {
 			for(int i=0; i<data.size(); i++) {
 				if (data.get(i).get("id") == null || data.get(i).get("listenOnly") == null) {
@@ -227,6 +245,7 @@ public class Program {
 			
 			// set channel var for each channel so they know what room to join and then enter room
 			for(int i=0; i<channels.size(); i++) {
+				ids.add(channels.get(i).getId());
 				AsteriskChannel channel = channels.get(i).getChannel();
 				channel.setVariable("RoomToJoin", String.valueOf(roomNo));
 				channel.setVariable("RoomListenInParam", ((boolean)data.get(i).get("listenOnly"))?"m":"");
@@ -245,6 +264,7 @@ public class Program {
 		}
 		checkRoomCounts();
 		log("Channels sent to room "+roomNo+".");
+		dispatchEvent(new ChannelsToRoomEvent(ids));
 	}
 	
 	public void sendChannelsToHolding(ArrayList<Integer> chanIds) throws InvalidChannelException, ChannelNotVerifiedException {
@@ -303,6 +323,7 @@ public class Program {
 		Extension extension = chan.getChannel().getCurrentExtension();
 		if (extension == null || !extension.getContext().equals("FnHolding")) {
 			sendToDPFn(chan, "ToHolding", 1);
+			dispatchEvent(new ChannelToHoldingEvent(chan.getId()));
 		}
 	}
 	
@@ -349,6 +370,7 @@ public class Program {
 	            public void run()
 	            {
 	            	for(int i=0; i<listeners.size(); i++) {
+	            		log("SENDING EVENT "+e);
 	            		listeners.get(i).onEvent(e);
 	            	}
 	            }

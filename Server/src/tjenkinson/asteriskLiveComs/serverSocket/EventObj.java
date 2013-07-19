@@ -27,7 +27,7 @@ class EventObj extends SocketOutput {
 	public Hashtable<String,Object> getData() {
 		Hashtable<String,Object> data = new Hashtable<String,Object>();
 		data.put("eventType", getEventType());
-		data.put("payload", getPayload());
+		data.put("payload", getPayload() == null ? false : getPayload());
 		return data;
 	}
 }
