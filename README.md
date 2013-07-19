@@ -3,6 +3,8 @@ Asterisk-Live-Coms
 
 A server written in java which provides an interface to Asterisk to facilitate dynamically routing channels between holding and other channels.
 
+It communicates with asterisk who's website is http://www.asterisk.org/ .
+
 The server requires the following arguments: [Asterisk Server IP] [Asterisk Server Port] [Asterisk Server User] [Asterisk Server Password]
 
 It uses the Asterisk Manager Interface (AMI) to connect to Asterisk and this is configured in "manager.conf". I have provided the configuration files I have used (information below).
