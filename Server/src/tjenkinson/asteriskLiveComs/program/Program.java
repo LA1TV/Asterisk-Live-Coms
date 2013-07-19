@@ -33,10 +33,10 @@ import tjenkinson.asteriskLiveComs.program.exceptions.OnlyOneChannel;
 
 public class Program {
 
-	private String asteriskServerIP = "192.168.21.118";
-	private int asteriskServerPort = 5038;
-	private String asteriskServerUser = "hello";
-	private String asteriskServerSecret = "world";
+	private String asteriskServerIP;
+	private int asteriskServerPort;
+	private String asteriskServerUser;
+	private String asteriskServerSecret;
 	
 	private ManagerConnection managerConnection;
 	private AsteriskServer asteriskServer;
