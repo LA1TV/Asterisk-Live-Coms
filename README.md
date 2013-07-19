@@ -13,7 +13,7 @@ The "Asterisk Live Coms" server expects the structure of "extensions.conf" to be
 
 The "Asterisk Live Coms" communication protocol uses requests encoded in the JSON format and sends responses also in JSON. I haven't written any documentation yet so please look in the source code. Specifically "IncomingCommandHandler.java". It also sends out events when a call is connected and disconnected so you don't need to keep polling the "getChannels" action.
 
-The sample config files are in the AsteriskConfig folder.
+The sample config files are in the "Asterisk Server Config" folder.
 
 Please let me know if you use thie for anything.
 
