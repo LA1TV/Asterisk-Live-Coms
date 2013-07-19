@@ -9,7 +9,7 @@ The server requires the following arguments: [Asterisk Server IP] [Asterisk Serv
 
 It uses the Asterisk Manager Interface (AMI) to connect to Asterisk and this is configured in "manager.conf". I have provided the configuration files I have used (information below).
 
-Huge thanks to the people at asteriskjava.org for writing the library that is used to communicate with the AMU.
+Huge thanks to the people at asteriskjava.org for writing the library that is used to communicate with the AMI.
 
 The "Asterisk Live Coms" server expects the structure of "extensions.conf" to be configured like the sample to work and is not meant to manage anything itself whilst this server is used.
 
