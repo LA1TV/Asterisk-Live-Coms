@@ -8,13 +8,26 @@ import tjenkinson.asteriskLiveComs.serverSocket.exceptions.ServerSocketAlreadyRu
 public class Driver {
 
 	// ip, port, user, password
-	public static void main(String[] args) throws NumberFormatException, NoAsteriskConnectionException {
-		//TODO: modify so that if connection fails it will retry at set intervals
-		Program program = new Program(args[0], Integer.parseInt(args[1], 10), args[2], args[3]);
-		startSocketServer(program);
-	}
-	
-	public static void startSocketServer(Program program) {
+	public static void main(String[] args) {
+		Program program = null;
+		boolean connected;
+		do {
+			connected = true;
+			try {
+				System.out.println("Starting server.");
+				program = new Program(args[0], Integer.parseInt(args[1], 10), args[2], args[3]);
+			} catch (NoAsteriskConnectionException e) {
+				// try and start again in 10 seconds
+				System.out.println("Sever failed to start because could not connect to the asterisk server. Trying agian in 10 seconds.");
+				connected = false;
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		} while(!connected);
+		program.log("Server started.");
 		program.log("Starting socket server.");
 		try {
 			new ServerSocketManager(program, 2345);
@@ -23,5 +36,4 @@ public class Driver {
 			e.printStackTrace();
 		}
 	}
-
 }

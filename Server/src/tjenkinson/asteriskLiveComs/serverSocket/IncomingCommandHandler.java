@@ -123,6 +123,9 @@ class IncomingCommandHandler implements Runnable {
 						clientSocketManager.getServerSocketManager().getMainProgramObj().reset();
 						returnObj = new ReturnObj(0, "The server is being reset.", null);
 					}
+					else if (inputLineJSON.getString("action").equals("isConnectedToAsterisk")) {
+						returnObj = new ReturnObj(0, null, clientSocketManager.getServerSocketManager().getMainProgramObj().isConnectedToAsterisk());
+					}
 				}
 				
 				if (returnObj == null) {
