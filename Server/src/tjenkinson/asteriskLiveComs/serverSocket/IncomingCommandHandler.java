@@ -8,7 +8,6 @@ import java.util.Hashtable;
 import tjenkinson.asteriskLiveComs.program.exceptions.ChannelNotVerifiedException;
 import tjenkinson.asteriskLiveComs.program.exceptions.InvalidChannelException;
 import tjenkinson.asteriskLiveComs.program.exceptions.MissingKeyException;
-import tjenkinson.asteriskLiveComs.program.exceptions.NoAsteriskConnectionException;
 import tjenkinson.asteriskLiveComs.program.exceptions.OnlyOneChannel;
 import douglascrockford.json.JSONArray;
 import douglascrockford.json.JSONException;

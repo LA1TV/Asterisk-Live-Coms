@@ -50,13 +50,13 @@ public class Program {
 	private Hashtable<Integer, Room> rooms;
 	private ArrayList<EventListener> listeners = new ArrayList<EventListener>();
 	private final ExecutorService eventsDispatcherExecutor;
-	private Object handleHangupLock = new Object();
-	private Object handleConnectionLock = new Object();
 	private Object asteriskConnectionLock = new Object();
+	private Object connectionChangeStateLock = new Object();
 	private Object resetLock = new Object();
 	private HandleAsteriskServerEvents asteriskServerEventsHandler;
 	private HandleManagerEvents managerEventsHandler;
 	private boolean hasLoaded = false;
+	private boolean connectedToAsterisk = false;
 	
 	public Program(String ip, int port, String user, String password) throws NoAsteriskConnectionException
 	{
@@ -82,6 +82,7 @@ public class Program {
 			log("Cannot connect to asterisk server.");
 			throw (new NoAsteriskConnectionException());
 		}
+		connectedToAsterisk = true;
 		synchronized(resetLock) {
 			reset();
 			hasLoaded = true;
@@ -380,6 +381,10 @@ public class Program {
 		}
 	}
 	
+	public boolean isConnectedToAsterisk() {
+		return connectedToAsterisk;
+	}
+	
 	public void addEventListener(EventListener a) {
 		listeners.add(a);
 	}
@@ -410,27 +415,23 @@ public class Program {
 		}
 		@Override
 		public void run() {
-			synchronized (handleHangupLock) {
-				
-				String chanName = e.getChannel();
-				MyAsteriskChannel channel = null;
-				synchronized(channels) {
-					Set<Integer> keys = channels.keySet();
-					for(Integer id : keys) {
-						if (channels.get(id).getChannel().getName().equals(chanName)) {
-							channel = channels.get(id);
-							break;
-						}
-					}
-					if (channel != null) {
-						removeChannelFromRoom(channel);
-						int channelId = channel.getId();
-						channels.remove(channelId);
-						dispatchEvent(new ChannelRemovedEvent(channelId));
-						log("Removed channel with id "+channel.getId()+".");
+			String chanName = e.getChannel();
+			MyAsteriskChannel channel = null;
+			synchronized(channels) {
+				Set<Integer> keys = channels.keySet();
+				for(Integer id : keys) {
+					if (channels.get(id).getChannel().getName().equals(chanName)) {
+						channel = channels.get(id);
+						break;
 					}
 				}
-				
+				if (channel != null) {
+					removeChannelFromRoom(channel);
+					int channelId = channel.getId();
+					channels.remove(channelId);
+					dispatchEvent(new ChannelRemovedEvent(channelId));
+					log("Removed channel with id "+channel.getId()+".");
+				}
 			}
 		}
 		
@@ -438,12 +439,22 @@ public class Program {
 	
 	private class HandleConnectionEvent implements Runnable {
 
+		private ManagerEvent e;
+		public HandleConnectionEvent(ManagerEvent e) {
+			this.e = e;
+		}
 		@Override
 		public void run() {
-			synchronized (handleConnectionLock) {
-				log("Connection to server has been lost or reconnected so resetting.");
-				reset();
+			synchronized(connectionChangeStateLock) {
+				if (e.getClass().getSimpleName().equals("ConnectEvent")) {
+					connectedToAsterisk = true;
+				}
+				else if (e.getClass().getSimpleName().equals("DisconnectEvent")) {
+					connectedToAsterisk = false;
+				}
 			}
+			log("Connection to server has been lost or reconnected so resetting.");
+			reset();
 		}
 		
 	}
@@ -456,7 +467,7 @@ public class Program {
 				new Thread(new HandleHangup((HangupEvent)e)).start();
 			}
 			else if (eName.equals("ConnectEvent") || eName.equals("DisconnectEvent")) {
-				new Thread(new HandleConnectionEvent()).start();
+				new Thread(new HandleConnectionEvent(e)).start();
 			}
 		}
 	}

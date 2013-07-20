@@ -2,8 +2,6 @@ package tjenkinson.asteriskLiveComs.serverSocket;
 
 import java.util.Hashtable;
 
-import douglascrockford.json.JSONObject;
-
 
 
 class ReturnObj extends SocketOutput {

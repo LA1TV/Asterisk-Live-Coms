@@ -9,6 +9,7 @@ public class Driver {
 
 	// ip, port, user, password
 	public static void main(String[] args) throws NumberFormatException, NoAsteriskConnectionException {
+		//TODO: modify so that if connection fails it will retry at set intervals
 		Program program = new Program(args[0], Integer.parseInt(args[1], 10), args[2], args[3]);
 		startSocketServer(program);
 	}
