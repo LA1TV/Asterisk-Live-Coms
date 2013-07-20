@@ -24,7 +24,7 @@ public class Holding1 {
 		in = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
 		
 		JSONObject mainObj = new JSONObject();
-		mainObj.put("action", "toHolding");
+		mainObj.put("action", "sendToHolding");
 
 		JSONArray channels = new JSONArray();
 		channels.put(1);

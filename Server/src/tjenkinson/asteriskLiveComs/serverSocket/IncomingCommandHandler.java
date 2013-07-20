@@ -100,7 +100,7 @@ class IncomingCommandHandler implements Runnable {
 							returnObj = new ReturnObj(105, "You need to specify more than one channel.", null);
 						}
 					}
-					else if (inputLineJSON.getString("action").equals("toHolding")) {
+					else if (inputLineJSON.getString("action").equals("sendToHolding")) {
 						try {
 							
 							ArrayList<Integer> data = new ArrayList<Integer>();

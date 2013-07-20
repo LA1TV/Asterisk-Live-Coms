@@ -24,7 +24,7 @@ public class Route12 {
 		in = new BufferedReader(new InputStreamReader(this.client.getInputStream()));
 		JSONObject mainObj = new JSONObject();
 
-		mainObj.put("action", "routeCall");
+		mainObj.put("action", "routeChannels");
 
 		JSONArray channels = new JSONArray();
 		JSONObject channel = new JSONObject();
