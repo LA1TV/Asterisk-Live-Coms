@@ -370,7 +370,6 @@ public class Program {
 	            public void run()
 	            {
 	            	for(int i=0; i<listeners.size(); i++) {
-	            		log("SENDING EVENT "+e);
 	            		listeners.get(i).onEvent(e);
 	            	}
 	            }
