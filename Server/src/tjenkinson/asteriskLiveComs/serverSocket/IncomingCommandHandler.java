@@ -73,7 +73,7 @@ class IncomingCommandHandler implements Runnable {
 							returnObj = new ReturnObj(102, "The channel id is invalid.", null);
 						}
 					}
-					else if (inputLineJSON.getString("action").equals("routeCall")) {
+					else if (inputLineJSON.getString("action").equals("routeChannels")) {
 						try {
 							
 							ArrayList<Hashtable<String,Object>> data = new ArrayList<Hashtable<String,Object>>();
