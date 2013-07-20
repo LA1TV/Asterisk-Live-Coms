@@ -33,6 +33,7 @@ import tjenkinson.asteriskLiveComs.program.events.ServerResettingEvent;
 import tjenkinson.asteriskLiveComs.program.exceptions.ChannelNotVerifiedException;
 import tjenkinson.asteriskLiveComs.program.exceptions.InvalidChannelException;
 import tjenkinson.asteriskLiveComs.program.exceptions.MissingKeyException;
+import tjenkinson.asteriskLiveComs.program.exceptions.NoAsteriskConnectionException;
 import tjenkinson.asteriskLiveComs.program.exceptions.OnlyOneChannel;
 
 public class Program {
@@ -52,11 +53,12 @@ public class Program {
 	private Object handleHangupLock = new Object();
 	private Object handleConnectionLock = new Object();
 	private Object asteriskConnectionLock = new Object();
+	private Object resetLock = new Object();
 	private HandleAsteriskServerEvents asteriskServerEventsHandler;
 	private HandleManagerEvents managerEventsHandler;
 	private boolean hasLoaded = false;
 	
-	public Program(String ip, int port, String user, String password)
+	public Program(String ip, int port, String user, String password) throws NoAsteriskConnectionException
 	{
 		this.asteriskServerIP = ip;
 		this.asteriskServerPort = port;
@@ -72,8 +74,18 @@ public class Program {
 		managerConnection = factory.createManagerConnection();
 		log("Started asterisk manager connection.");
 		asteriskServer = new DefaultAsteriskServer(managerConnection);
-		reset();
-		hasLoaded = true;
+		log("Checking connectivity.");
+		try {
+			asteriskServer.getVersion();
+		}
+		catch (ManagerCommunicationException e) {
+			log("Cannot connect to asterisk server.");
+			throw (new NoAsteriskConnectionException());
+		}
+		synchronized(resetLock) {
+			reset();
+			hasLoaded = true;
+		}
 		log("All systems running!");
 	}
 	
@@ -83,49 +95,62 @@ public class Program {
 	
 	public void reset()
 	{
-		log("Initialising.");
-		if (hasLoaded) {
-			dispatchEvent(new ServerResettingEvent());
-		}
-		synchronized(asteriskConnectionLock) {
-			asteriskServer.removeAsteriskServerListener(asteriskServerEventsHandler);
-			managerConnection.removeEventListener(managerEventsHandler);
-		}
-		if (channels == null) {
-			channels = new Hashtable<Integer,MyAsteriskChannel>();
-		}
-		else {
-			synchronized (channels) {
+		synchronized(resetLock) {
+			log("Initialising.");
+			if (hasLoaded) {
+				dispatchEvent(new ServerResettingEvent());
+			}
+			synchronized(asteriskConnectionLock) {
+				asteriskServer.removeAsteriskServerListener(asteriskServerEventsHandler);
+				managerConnection.removeEventListener(managerEventsHandler);
+			}
+			
+			if (channels != null){
+				log("Broadcasting channel removed event for any channels currently registered before clearing.");
+				synchronized(channels) {
+					Set<Integer> keys = channels.keySet();
+					for(Integer id : keys) {
+						dispatchEvent(new ChannelRemovedEvent(channels.get(id).getId()));
+					}
+				}
+			}
+			
+			if (channels == null) {
 				channels = new Hashtable<Integer,MyAsteriskChannel>();
 			}
-		}
-		if (rooms == null) {
-			rooms = new Hashtable<Integer, Room>();
-		}
-		else {
-			synchronized (rooms) {
+			else {
+				synchronized (channels) {
+					channels = new Hashtable<Integer,MyAsteriskChannel>();
+				}
+			}
+			if (rooms == null) {
 				rooms = new Hashtable<Integer, Room>();
 			}
-		}
-		
-		try {
-			for (AsteriskChannel asteriskChannel : asteriskServer.getChannels())
-	        {
-				log("Found channel: \""+asteriskChannel+"\".");
-				registerChannel(asteriskChannel);
-	        }
-		}
-		catch (ManagerCommunicationException e) {
-			log("Can't find any channels because not connected to asterisk server.");
-		}
-		synchronized(asteriskConnectionLock) {
+			else {
+				synchronized (rooms) {
+					rooms = new Hashtable<Integer, Room>();
+				}
+			}
+			
 			try {
-				asteriskServer.addAsteriskServerListener(asteriskServerEventsHandler);
+				for (AsteriskChannel asteriskChannel : asteriskServer.getChannels())
+		        {
+					log("Found channel: \""+asteriskChannel+"\".");
+					registerChannel(asteriskChannel);
+		        }
 			}
 			catch (ManagerCommunicationException e) {
-				log("Can't add listener because not connected to asterisk server.");
+				// if it can't connect this will be called again immediately when it does. the library keeps retrying
 			}
-			managerConnection.addEventListener(managerEventsHandler);
+			synchronized(asteriskConnectionLock) {
+				try {
+					asteriskServer.addAsteriskServerListener(asteriskServerEventsHandler);
+				}
+				catch (ManagerCommunicationException e) {
+					// if it can't connect this will be called again immediately when it does. the library keeps retrying
+				}
+				managerConnection.addEventListener(managerEventsHandler);
+			}
 		}
 	}
 	
@@ -416,13 +441,7 @@ public class Program {
 		@Override
 		public void run() {
 			synchronized (handleConnectionLock) {
-				log("Connection to server has been lost or reconnected so broadcasting channel removed events and resetting.");
-				synchronized(channels) {
-					Set<Integer> keys = channels.keySet();
-					for(Integer id : keys) {
-						dispatchEvent(new ChannelRemovedEvent(channels.get(id).getId()));
-					}
-				}
+				log("Connection to server has been lost or reconnected so resetting.");
 				reset();
 			}
 		}
