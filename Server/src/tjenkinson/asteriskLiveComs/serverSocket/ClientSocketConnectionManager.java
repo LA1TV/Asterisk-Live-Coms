@@ -45,9 +45,17 @@ class ClientSocketConnectionManager implements Runnable, EventListener {
 	
 	public void closeSocket() {
 		
-		out.close();
 		try {
-			in.close();
+			client.shutdownInput();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		try {
+			client.shutdownOutput();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		try {
 			client.close();
 		} catch (IOException e) {
 			e.printStackTrace();
