@@ -44,24 +44,31 @@ class ClientSocketConnectionManager implements Runnable, EventListener {
 	}
 	
 	public void closeSocket() {
-		
-		try {
-			client.shutdownInput();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			client.shutdownOutput();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			client.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+		boolean wasClosed;
+		synchronized(client) {
+			wasClosed = client.isClosed();
+			if (!wasClosed) {
+				try {
+					client.shutdownInput();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				try {
+					client.shutdownOutput();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				try {
+					client.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 		serverSocketManager.getMainProgramObj().removeEventListener(this);
-		serverSocketManager.getMainProgramObj().log("Socket connection lost.");
+		if (!wasClosed) {
+			serverSocketManager.getMainProgramObj().log("Socket connection lost.");
+		}
 	}
 
 	@Override
