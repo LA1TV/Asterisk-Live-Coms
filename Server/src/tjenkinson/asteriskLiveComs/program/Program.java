@@ -20,7 +20,6 @@ import org.asteriskjava.manager.ManagerConnectionFactory;
 import org.asteriskjava.manager.ManagerEventListener;
 import org.asteriskjava.manager.event.HangupEvent;
 import org.asteriskjava.manager.event.ManagerEvent;
-import org.asteriskjava.util.DaemonThreadFactory;
 
 import tjenkinson.asteriskLiveComs.program.events.ChannelAddedEvent;
 import tjenkinson.asteriskLiveComs.program.events.ChannelRemovedEvent;
@@ -68,7 +67,7 @@ public class Program {
 		asteriskServerEventsHandler = new HandleAsteriskServerEvents();
 		managerEventsHandler = new HandleManagerEvents();
 		
-		eventsDispatcherExecutor = Executors.newSingleThreadExecutor(new DaemonThreadFactory());
+		eventsDispatcherExecutor = Executors.newSingleThreadExecutor();
 		ManagerConnectionFactory factory = new ManagerConnectionFactory(asteriskServerIP, asteriskServerPort, asteriskServerUser, asteriskServerSecret);
 		log("Starting asterisk manager connection.");
 		managerConnection = factory.createManagerConnection();
@@ -386,24 +385,30 @@ public class Program {
 	}
 	
 	public void addEventListener(EventListener a) {
-		listeners.add(a);
+		synchronized(listeners) {
+			listeners.add(a);
+		}
 	}
 	
 	public void removeEventListener(EventListener a) {
-		listeners.remove(a);
+		synchronized(listeners) {
+			listeners.remove(a);
+		}
 	}
 	
 	private void dispatchEvent(final LiveComsEvent e) {
-		synchronized (eventsDispatcherExecutor) {
-			eventsDispatcherExecutor.execute(new Runnable()
-	        {
-	            public void run()
-	            {
-	            	for(int i=0; i<listeners.size(); i++) {
-	            		listeners.get(i).onEvent(e);
-	            	}
-	            }
-	        });
+		synchronized (listeners) {
+			synchronized (eventsDispatcherExecutor) {
+				eventsDispatcherExecutor.execute(new Runnable()
+		        {
+		            public void run()
+		            {
+		            	for(int i=0; i<listeners.size(); i++) {
+		            		listeners.get(i).onEvent(e);
+		            	}
+		            }
+		        });
+			}
 		}
 	}
 	
