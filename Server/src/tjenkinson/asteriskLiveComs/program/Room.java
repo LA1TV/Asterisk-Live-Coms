@@ -12,6 +12,9 @@ public class Room {
 	public Room(int no, ArrayList<MyAsteriskChannel> channels) {
 		this.no = no;
 		this.channels = channels;
+		for(int i=0; i<channels.size(); i++) {
+			channels.get(i).setRoom(this);
+		}
 	}
 	
 	public int getNo() {
@@ -24,6 +27,7 @@ public class Room {
 	
 	// this will only be used if a channel hangs up
 	public void removeChannel(MyAsteriskChannel channel) {
+		channel.setRoom(null);
 		channels.remove(channel);
 	}
 	
