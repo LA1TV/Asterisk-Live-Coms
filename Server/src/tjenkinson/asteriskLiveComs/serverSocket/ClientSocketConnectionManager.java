@@ -96,7 +96,7 @@ class ClientSocketConnectionManager implements Runnable, EventListener {
 		else if (e.getClass().getSimpleName().equals("ChannelToHoldingEvent")) {
 			Hashtable<String,Object> payload = new Hashtable<String,Object>();
 			payload.put("channelId", ((ChannelToHoldingEvent) e).getChannelId());
-			sendOutput(new EventObj("channelToHoldingEvent", payload));
+			sendOutput(new EventObj("channelToHolding", payload));
 		}
 		else if (e.getClass().getSimpleName().equals("ChannelVerifiedEvent")) {
 			Hashtable<String,Object> payload = new Hashtable<String,Object>();
@@ -104,7 +104,7 @@ class ClientSocketConnectionManager implements Runnable, EventListener {
 			sendOutput(new EventObj("channelVerified", payload));
 		}
 		else if (e.getClass().getSimpleName().equals("ServerResettingEvent")) {
-			sendOutput(new EventObj("resetting", null));
+			sendOutput(new EventObj("serverResetting", null));
 		}
 	}
 }
