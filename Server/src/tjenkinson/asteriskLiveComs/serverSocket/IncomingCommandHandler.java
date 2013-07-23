@@ -126,6 +126,9 @@ class IncomingCommandHandler implements Runnable {
 					else if (inputLineJSON.getString("action").equals("isConnectedToAsterisk")) {
 						returnObj = new ReturnObj(0, null, clientSocketManager.getServerSocketManager().getMainProgramObj().isConnectedToAsterisk());
 					}
+					else if (inputLineJSON.getString("action").equals("ping")) {
+						returnObj = new ReturnObj(0, "Hello!", null);
+					}
 				}
 				
 				if (returnObj == null) {
