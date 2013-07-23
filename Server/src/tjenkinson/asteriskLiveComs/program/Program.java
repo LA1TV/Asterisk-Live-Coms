@@ -400,14 +400,14 @@ public class Program {
 		synchronized (listeners) {
 			synchronized (eventsDispatcherExecutor) {
 				eventsDispatcherExecutor.execute(new Runnable()
-		        {
-		            public void run()
-		            {
-		            	for(int i=0; i<listeners.size(); i++) {
-		            		listeners.get(i).onEvent(e);
-		            	}
-		            }
-		        });
+				{
+					public void run()
+					{
+						for(int i=0; i<listeners.size(); i++) {
+							listeners.get(i).onEvent(e);
+						}
+					}
+				});
 			}
 		}
 	}
