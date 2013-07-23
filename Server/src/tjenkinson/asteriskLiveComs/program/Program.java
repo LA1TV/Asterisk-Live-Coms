@@ -20,6 +20,7 @@ import org.asteriskjava.manager.ManagerConnectionFactory;
 import org.asteriskjava.manager.ManagerEventListener;
 import org.asteriskjava.manager.event.HangupEvent;
 import org.asteriskjava.manager.event.ManagerEvent;
+import org.asteriskjava.manager.event.NewExtenEvent;
 
 import tjenkinson.asteriskLiveComs.program.events.ChannelAddedEvent;
 import tjenkinson.asteriskLiveComs.program.events.ChannelRemovedEvent;
@@ -44,7 +45,8 @@ public class Program {
 	
 	private ManagerConnection managerConnection;
 	private AsteriskServer asteriskServer;
-	private Hashtable<Integer,MyAsteriskChannel> channels = null;
+	private Hashtable<Integer,MyAsteriskChannel> registeredChannels = null;
+	private Hashtable<Integer,MyAsteriskChannel> activatedChannels = null;
 	private int lastChannelId = 0;
 	private Hashtable<Integer, Room> rooms;
 	private ArrayList<EventListener> listeners = new ArrayList<EventListener>();
@@ -52,6 +54,7 @@ public class Program {
 	private Object asteriskConnectionLock = new Object();
 	private Object connectionChangeStateLock = new Object();
 	private Object resetLock = new Object();
+	private Object channelActivationLock = new Object();
 	private HandleAsteriskServerEvents asteriskServerEventsHandler;
 	private HandleManagerEvents managerEventsHandler;
 	private boolean hasLoaded = false;
@@ -105,22 +108,31 @@ public class Program {
 				managerConnection.removeEventListener(managerEventsHandler);
 			}
 			
-			if (channels != null){
+			if (activatedChannels != null){
 				log("Broadcasting channel removed event for any channels currently registered before clearing.");
-				synchronized(channels) {
-					Set<Integer> keys = channels.keySet();
+				synchronized(activatedChannels) {
+					Set<Integer> keys = activatedChannels.keySet();
 					for(Integer id : keys) {
-						dispatchEvent(new ChannelRemovedEvent(channels.get(id).getId()));
+						dispatchEvent(new ChannelRemovedEvent(activatedChannels.get(id).getId()));
 					}
 				}
 			}
 			
-			if (channels == null) {
-				channels = new Hashtable<Integer,MyAsteriskChannel>();
+			if (registeredChannels == null) {
+				registeredChannels = new Hashtable<Integer,MyAsteriskChannel>();
 			}
 			else {
-				synchronized (channels) {
-					channels = new Hashtable<Integer,MyAsteriskChannel>();
+				synchronized (registeredChannels) {
+					registeredChannels = new Hashtable<Integer,MyAsteriskChannel>();
+				}
+			}
+			
+			if (activatedChannels == null) {
+				activatedChannels = new Hashtable<Integer,MyAsteriskChannel>();
+			}
+			else {
+				synchronized (activatedChannels) {
+					activatedChannels = new Hashtable<Integer,MyAsteriskChannel>();
 				}
 			}
 			if (rooms == null) {
@@ -136,7 +148,7 @@ public class Program {
 				for (AsteriskChannel asteriskChannel : asteriskServer.getChannels())
 		        {
 					log("Found channel: \""+asteriskChannel+"\".");
-					registerChannel(asteriskChannel);
+					registerChannel(asteriskChannel, true);
 		        }
 			}
 			catch (ManagerCommunicationException e) {
@@ -154,27 +166,57 @@ public class Program {
 		}
 	}
 	
-	private MyAsteriskChannel registerChannel(AsteriskChannel asteriskChannel) {
+	// register a channel that has just been received by asterisk
+	private void registerChannel(AsteriskChannel asteriskChannel) {
+		registerChannel(asteriskChannel, false);
+	}
+	private void registerChannel(AsteriskChannel asteriskChannel, boolean alsoActivate) {
 		MyAsteriskChannel chan = null;
 		
 		if (asteriskChannel.getName().matches("^.*?/pseudo.*$")) {
 			log("Not registering channel \""+asteriskChannel+"\" because it has a \"pseudo\" after a /.");
-			return null;
+			return;
 		}
 		
-		synchronized(channels) {
+		synchronized(registeredChannels) {
 			int id = ++lastChannelId;
 			log("Registering channel \""+asteriskChannel+"\" with id "+id+".");
 			chan = new MyAsteriskChannel(asteriskChannel, id);
-			channels.put(id, chan);
-			sendToDPFn(chan, "WaitVerification", 1);
-			dispatchEvent(new ChannelAddedEvent(chan));
-			return chan;
+			registeredChannels.put(id, chan);
+			if (alsoActivate) {
+				// if the current context is start then it will be added when transferred to GrabChannel so leave it.
+				if (!chan.getChannel().getCurrentExtension().getContext().equals("Start")) {
+					activateChannel(chan.getChannel().getName());
+				}
+			}
+		}
+	}
+	
+	// activate a channel so that it can be used. (not related to grantAccess)
+	private void activateChannel(String chanName) {
+		synchronized(activatedChannels) {
+			synchronized(registeredChannels) {
+				Set<Integer> keys = registeredChannels.keySet();
+				MyAsteriskChannel channel = null;
+				for(Integer id : keys) {
+					if (registeredChannels.get(id).getChannel().getName().equals(chanName)) {
+						channel = registeredChannels.get(id);
+						break;
+					}
+				}
+				if (channel != null) {
+					log("Activating channel with id "+channel.getId()+".");
+					registeredChannels.remove(channel.getId());
+					activatedChannels.put(channel.getId(), channel);
+					sendToDPFn(channel, "WaitVerification", 1);
+					dispatchEvent(new ChannelAddedEvent(channel));
+				}
+			}
 		}
 	}
 	
 	private void sendToDPFn(MyAsteriskChannel chan, String fn, int priority) {
-		synchronized(channels) {
+		synchronized(activatedChannels) {
 			log("Sending channel with id "+chan.getId()+" to DPFn \""+fn+"\" at priority "+priority+".");
 			chan.getChannel().redirect("Fn"+fn, "start", priority);
 		}
@@ -184,10 +226,10 @@ public class Program {
 	public ArrayList<Hashtable<String,Object>> getChannels() {
 		log("Getting channels.");
 		ArrayList<Hashtable<String,Object>> data = new ArrayList<Hashtable<String,Object>>();
-		synchronized(channels) {
-			Set<Integer> keys = channels.keySet();
+		synchronized(activatedChannels) {
+			Set<Integer> keys = activatedChannels.keySet();
 			for(Integer id : keys) {
-				MyAsteriskChannel channel = channels.get(id);
+				MyAsteriskChannel channel = activatedChannels.get(id);
 				data.add(channel.getInfo());
 			}
 		}
@@ -195,7 +237,7 @@ public class Program {
 	}
 	
 	public boolean grantAccess(int id, boolean enableHoldingMusic) throws InvalidChannelException {
-		synchronized(channels) {
+		synchronized(activatedChannels) {
 			MyAsteriskChannel channel = getChannelFromId(id);
 			if (channel.getVerified()) {
 				return false;
@@ -213,7 +255,7 @@ public class Program {
 	}
 	
 	public void denyAccess(int id) throws InvalidChannelException {
-		synchronized(channels) {
+		synchronized(activatedChannels) {
 			MyAsteriskChannel channel = getChannelFromId(id);
 			log("Denying access for channel with id "+id+".");
 			sendToDPFn(channel, "DenyAccess", 1);
@@ -221,8 +263,8 @@ public class Program {
 	}
 	
 	private MyAsteriskChannel getChannelFromId(int id) throws InvalidChannelException {
-		synchronized(channels) {
-			MyAsteriskChannel channel = channels.get(id);
+		synchronized(activatedChannels) {
+			MyAsteriskChannel channel = activatedChannels.get(id);
 			if (channel == null) {
 				throw(new InvalidChannelException());
 			}
@@ -259,11 +301,13 @@ public class Program {
 			}
 			
 			roomNo = 1; // rooms start at 1
+			Room room = null;
 			synchronized(rooms) {
 				while(rooms.containsKey(roomNo)) {
 					roomNo++;
 				}
-				rooms.put(roomNo, new Room(roomNo, channels));
+				room = new Room(roomNo, channels);
+				rooms.put(roomNo, room);
 			}
 			// this initialises the room in the library (even though don't use it for rooms)
 			asteriskServer.getMeetMeRoom(String.valueOf(roomNo));
@@ -295,7 +339,7 @@ public class Program {
 	public void sendChannelsToHolding(ArrayList<Integer> chanIds) throws InvalidChannelException, ChannelNotVerifiedException {
 		log("Sending channels to holding.");
 		ArrayList<MyAsteriskChannel> sentChannels = new ArrayList<MyAsteriskChannel>();
-		synchronized(channels) {
+		synchronized(activatedChannels) {
 			for (int i=0; i<chanIds.size(); i++) {
 				if (!getChannelFromId(chanIds.get(i)).getVerified()) {
 					throw (new ChannelNotVerifiedException());
@@ -332,7 +376,7 @@ public class Program {
 	private void emptyRoom(Room room) {
 		log("Emptying room no "+room.getNo()+".");
 		synchronized(rooms) {
-			synchronized(channels) {
+			synchronized(activatedChannels) {
 				ArrayList<MyAsteriskChannel> roomChannels = room.getChannels();
 				for(int i=0; i<roomChannels.size(); i++) {
 					MyAsteriskChannel channel = roomChannels.get(i);
@@ -364,7 +408,7 @@ public class Program {
 			Room room = null;
 			for(Integer roomNo : keys) {
 				room = rooms.get(roomNo);
-				synchronized(channels) {
+				synchronized(activatedChannels) {
 					if (room.containsChannel(channel)) {
 						break;
 					}
@@ -420,22 +464,39 @@ public class Program {
 		}
 		@Override
 		public void run() {
-			String chanName = e.getChannel();
-			MyAsteriskChannel channel = null;
-			synchronized(channels) {
-				Set<Integer> keys = channels.keySet();
-				for(Integer id : keys) {
-					if (channels.get(id).getChannel().getName().equals(chanName)) {
-						channel = channels.get(id);
-						break;
+			synchronized(registeredChannels) {
+				synchronized(activatedChannels) {
+
+					String chanName = e.getChannel();
+					MyAsteriskChannel channel = null;
+					Set<Integer> keys = activatedChannels.keySet();
+					for(Integer id : keys) {
+						if (activatedChannels.get(id).getChannel().getName().equals(chanName)) {
+							channel = activatedChannels.get(id);
+							break;
+						}
 					}
-				}
-				if (channel != null) {
-					removeChannelFromRoom(channel);
-					int channelId = channel.getId();
-					channels.remove(channelId);
-					dispatchEvent(new ChannelRemovedEvent(channelId));
-					log("Removed channel with id "+channel.getId()+".");
+					if (channel != null) {
+						removeChannelFromRoom(channel);
+						int channelId = channel.getId();
+						activatedChannels.remove(channelId);
+						dispatchEvent(new ChannelRemovedEvent(channelId));
+						log("Removed channel with id "+channel.getId()+".");
+					}
+					
+					channel = null;
+					keys = registeredChannels.keySet();
+					for(Integer id : keys) {
+						if (registeredChannels.get(id).getChannel().getName().equals(chanName)) {
+							channel = registeredChannels.get(id);
+							break;
+						}
+					}
+					if (channel != null) {
+						int channelId = channel.getId();
+						registeredChannels.remove(channelId);
+						log("Removed unactivated channel with id "+channel.getId()+".");
+					}
 				}
 			}
 		}
@@ -451,7 +512,7 @@ public class Program {
 		@Override
 		public void run() {
 			synchronized(connectionChangeStateLock) {
-				if (e.getClass().getSimpleName().equals("ConnectEvent")) {
+				if (e.getClass().getSimpleName().equals("ConnectEvent") || e.getClass().getSimpleName().equals("FullyBootedEvent")) {
 					connectedToAsterisk = true;
 				}
 				else if (e.getClass().getSimpleName().equals("DisconnectEvent")) {
@@ -464,14 +525,34 @@ public class Program {
 		
 	}
 	
+	private class HandleChannelActivation implements Runnable {
+
+		private NewExtenEvent e;
+		public HandleChannelActivation(NewExtenEvent e) {
+			this.e = e;
+		}
+		@Override
+		public void run() {
+			synchronized(channelActivationLock) {
+				activateChannel(e.getChannel());
+			}
+		}
+		
+	}
+	
 	private class HandleManagerEvents implements ManagerEventListener {
 		@Override
 		public void onManagerEvent(ManagerEvent e) {
 			String eName = e.getClass().getSimpleName().toString();
-			if (eName.equals("HangupEvent")) {
+			if (eName.equals("NewExtenEvent")) {
+				if (((NewExtenEvent)e).getContext().equals("GrabChannel")) {
+					new Thread(new HandleChannelActivation((NewExtenEvent)e)).start();
+				}
+			}
+			else if (eName.equals("HangupEvent")) {
 				new Thread(new HandleHangup((HangupEvent)e)).start();
 			}
-			else if (eName.equals("ConnectEvent") || eName.equals("DisconnectEvent")) {
+			else if (eName.equals("FullyBootedEvent") || eName.equals("ConnectEvent") || eName.equals("DisconnectEvent")) {
 				new Thread(new HandleConnectionEvent(e)).start();
 			}
 		}
