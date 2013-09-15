@@ -7,8 +7,13 @@ import tjenkinson.asteriskLiveComs.serverSocket.exceptions.ServerSocketAlreadyRu
 
 public class Driver {
 
-	// asterisk ip, asterisk port, asterisk user, asterisk password, live coms server port
+	// asterisk ip, asterisk port, asterisk user, asterisk password, live coms server ip, live coms server port
 	public static void main(String[] args) {
+		if (args.length < 6) {
+			System.out.println("Missing arguments.");
+			System.exit(1);
+		}
+		
 		Program program = null;
 		boolean connected;
 		do {
@@ -30,7 +35,7 @@ public class Driver {
 		program.log("Server started.");
 		program.log("Starting socket server.");
 		try {
-			new ServerSocketManager(program, Integer.parseInt(args[4], 10));
+			new ServerSocketManager(program, args[4], Integer.parseInt(args[5], 10));
 			program.log("Socket server started.");
 		} catch (ServerSocketAlreadyRunningException e) {
 			e.printStackTrace();

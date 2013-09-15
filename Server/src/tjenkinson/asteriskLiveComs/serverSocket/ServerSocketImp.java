@@ -1,6 +1,7 @@
 package tjenkinson.asteriskLiveComs.serverSocket;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 
 import tjenkinson.asteriskLiveComs.program.Program;
@@ -8,11 +9,13 @@ import tjenkinson.asteriskLiveComs.program.Program;
 class ServerSocketImpl implements Runnable {
 	
 	private Program mainProgramObj;
+	private String host;
 	private int port;
 	private ServerSocket serverSocket;
 	
-	ServerSocketImpl(Program mainProgramObj, int port) {
+	ServerSocketImpl(Program mainProgramObj, String host, int port) {
 		this.mainProgramObj = mainProgramObj;
+		this.host = host;
 		this.port = port;
 	}
 	
@@ -23,7 +26,7 @@ class ServerSocketImpl implements Runnable {
 	@Override
 	public void run() {
 		try {
-		    serverSocket = new ServerSocket(port);
+		    serverSocket = new ServerSocket(port, 50, InetAddress.getByName(host));
 		} 
 		catch (IOException e) {
 			e.printStackTrace();

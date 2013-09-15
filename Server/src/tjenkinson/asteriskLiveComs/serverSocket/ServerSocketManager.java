@@ -14,13 +14,13 @@ public class ServerSocketManager {
 		return running;
 	}
 	
-	public ServerSocketManager(Program mainProgramObj, int port) throws ServerSocketAlreadyRunningException {
+	public ServerSocketManager(Program mainProgramObj, String host, int port) throws ServerSocketAlreadyRunningException {
 		if (isRunning()) {
 			throw(new ServerSocketAlreadyRunningException());
 		}
 		running = true;
 		// start thread
-		serverSocketThread = new Thread(new ServerSocketImpl(mainProgramObj, port));
+		serverSocketThread = new Thread(new ServerSocketImpl(mainProgramObj, host, port));
 		serverSocketThread.start();
 	}
 }

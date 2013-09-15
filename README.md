@@ -5,7 +5,7 @@ A server written in java which provides an interface to Asterisk to facilitate d
 
 It communicates with asterisk who's website is http://www.asterisk.org/ .
 
-The server requires the following arguments: [Asterisk Server IP] [Asterisk Server Port] [Asterisk Server User] [Asterisk Server Password] [Live Coms Server Port]
+The server requires the following arguments: [Asterisk Server IP] [Asterisk Server Port] [Asterisk Server User] [Asterisk Server Password] [Live Coms Server IP] [Live Coms Server Port]
 
 It uses the Asterisk Manager Interface (AMI) to connect to Asterisk and this is configured in "manager.conf". I have provided the configuration files I have used (information below).
 
@@ -17,6 +17,6 @@ The "Asterisk Live Coms" communication protocol uses requests encoded in the JSO
 
 The sample config files are in the "Asterisk Server Config" folder.
 
-Please let me know if you use thie for anything.
+Please let me know if you use this for anything.
 
 Thanks!
