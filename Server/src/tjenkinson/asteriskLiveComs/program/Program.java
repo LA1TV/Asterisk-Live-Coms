@@ -218,7 +218,27 @@ public class Program {
 	private void sendToDPFn(MyAsteriskChannel chan, String fn, int priority) {
 		synchronized(activatedChannels) {
 			log("Sending channel with id "+chan.getId()+" to DPFn \""+fn+"\" at priority "+priority+".");
-			chan.getChannel().redirect("Fn"+fn, "start", priority);
+			boolean success = false;
+			
+			// TODO: figure out what is actually going wrong here
+			// try this a maximum of 3 times before giving up
+			// if this is called to quickly after the channel is activated this is thrown for some reason.
+			// presuming it's a bug in the library as if you try the same again after a delay it works
+			// the library must already have the channel as it wouldn't end up here with the channel otherwise!
+			for(int i=0; i<3 && !success; i++) {
+				try {
+					chan.getChannel().redirect("Fn"+fn, "start", priority);
+					success = true;
+				}
+				catch(org.asteriskjava.live.NoSuchChannelException e) {
+					try {
+						log("Sending channel failed. Trying again.");
+						Thread.sleep(1000);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
 		}
 		checkRoomCounts();
 	}
