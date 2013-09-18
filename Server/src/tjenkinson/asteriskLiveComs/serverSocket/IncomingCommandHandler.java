@@ -100,6 +100,9 @@ class IncomingCommandHandler implements Runnable {
 							returnObj = new ReturnObj(105, "You need to specify more than one channel.", null);
 						}
 					}
+					else if (inputLineJSON.getString("action").equals("getRoomGroups")) {
+						returnObj = new ReturnObj(0, null, clientSocketManager.getServerSocketManager().getMainProgramObj().getRoomGroups());
+					}
 					else if (inputLineJSON.getString("action").equals("sendToHolding")) {
 						try {
 							

@@ -356,6 +356,24 @@ public class Program {
 		dispatchEvent(new ChannelsToRoomEvent(ids));
 	}
 	
+	public ArrayList<ArrayList<Integer>> getRoomGroups() {
+		ArrayList<ArrayList<Integer>> groups = new ArrayList<ArrayList<Integer>>();
+		log("Getting room groups.");
+		synchronized(rooms) {
+			Set<Integer> keys = rooms.keySet();
+			for(Integer roomNo : keys) {
+				Room room = rooms.get(roomNo);
+				ArrayList<MyAsteriskChannel> channels = room.getChannels();
+				ArrayList<Integer> group = new ArrayList<Integer>();
+				for(int i=0; i<channels.size(); i++) {
+					group.add(channels.get(i).getId());
+				}
+				groups.add(group);
+			}
+		}
+		return groups;
+	}
+	
 	public void sendChannelsToHolding(ArrayList<Integer> chanIds) throws InvalidChannelException, ChannelNotVerifiedException {
 		log("Sending channels to holding.");
 		ArrayList<MyAsteriskChannel> sentChannels = new ArrayList<MyAsteriskChannel>();
