@@ -185,7 +185,7 @@ public class Program {
 			registeredChannels.put(id, chan);
 			if (alsoActivate) {
 				// if the current context is start then it will be added when transferred to GrabChannel so leave it.
-				if (!chan.getChannel().getCurrentExtension().getContext().equals("Start")) {
+				if (!chan.getChannel().getCurrentExtension().getContext().equals("Start") && !chan.getChannel().getCurrentExtension().getContext().equals("FnDenyAccess")) {
 					activateChannel(chan.getChannel().getName());
 				}
 			}
